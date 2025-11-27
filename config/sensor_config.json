@@ -1,0 +1,13 @@
+{
+  "locations": [
+    "DowsLake",
+    "FifthAvenue",
+    "NAC"
+  ],
+  "ranges": {
+    "iceThicknessCm": { "min": 20, "max": 40 },
+    "surfaceTemperatureC": { "min": -15, "max": 2 },
+    "snowAccumulationCm": { "min": 0, "max": 15 },
+    "externalTemperatureC": { "min": -25, "max": 5 }
+  }
+}
