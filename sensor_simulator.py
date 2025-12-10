@@ -3,30 +3,46 @@ import time
 import json
 import random
 from datetime import datetime, timezone
+from pathlib import Path
 
 from dotenv import load_dotenv
 
 try:
     from azure.iot.device import IoTHubDeviceClient, Message
 except ImportError:
-    
     IoTHubDeviceClient = None
     Message = None
 
 
 def load_config():
     """
-    Load environment variables and basic configuration.
+    Load configuration from .env and return interval + location mapping.
     """
-    load_dotenv()  # Loads variables from a local .env file 
+    # Load .env from the same folder as this script
+    base_dir = Path(__file__).resolve().parent
+    env_path = base_dir / ".env"
 
-    # Read message interval 
+    if env_path.exists():
+        load_dotenv(dotenv_path=env_path)
+        print(f"[INFO] Loaded .env from: {env_path}")
+    else:
+        print(f"[WARN] .env file not found at: {env_path}")
+
+    # Debug flags to verify environment variables are visible
+    print("[DEBUG] DEVICE1_CONNECTION_STRING present:",
+          bool(os.getenv("DEVICE1_CONNECTION_STRING")))
+    print("[DEBUG] DEVICE2_CONNECTION_STRING present:",
+          bool(os.getenv("DEVICE2_CONNECTION_STRING")))
+    print("[DEBUG] DEVICE3_CONNECTION_STRING present:",
+          bool(os.getenv("DEVICE3_CONNECTION_STRING")))
+
+    # Read message interval (default 10 seconds)
     try:
         interval = int(os.getenv("MESSAGE_INTERVAL_SECONDS", "10"))
     except ValueError:
         interval = 10
 
-    
+    # Mapping between logical locations and env variable names
     locations = [
         ("DowsLake", "DEVICE1_CONNECTION_STRING"),
         ("FifthAvenue", "DEVICE2_CONNECTION_STRING"),
@@ -38,8 +54,7 @@ def load_config():
 
 def create_device_clients(locations):
     """
-    Create Azure IoT Hub device clients for each configured location.
-    If a connection string is missing, that device is skipped.
+    Create IoT Hub device clients for each configured location.
     """
     if IoTHubDeviceClient is None:
         print(
@@ -79,8 +94,6 @@ def create_device_clients(locations):
 def generate_sensor_payload(location: str) -> dict:
     """
     Generate one random sensor reading for a given location.
-
-    NOTE: The ranges below roughly follow realistic winter conditions.
     """
     ice_thickness_cm = round(random.uniform(20, 40), 1)
     surface_temp_c = round(random.uniform(-15, 2), 1)
@@ -101,8 +114,7 @@ def generate_sensor_payload(location: str) -> dict:
 
 def send_telemetry_loop(clients, interval_seconds: int):
     """
-    Main loop: for each device, generate telemetry and send to IoT Hub
-    every interval_seconds seconds.
+    Main loop: send telemetry for all clients every interval_seconds.
     """
     if not clients:
         print("No clients available. Exiting.")
@@ -131,7 +143,6 @@ def send_telemetry_loop(clients, interval_seconds: int):
 
     except KeyboardInterrupt:
         print("\n[INFO] Telemetry loop stopped by user.")
-
     finally:
         for location, client in clients:
             try:
@@ -142,9 +153,6 @@ def send_telemetry_loop(clients, interval_seconds: int):
 
 
 def main():
-    """
-    Entry point for the simulator.
-    """
     interval, locations = load_config()
     clients = create_device_clients(locations)
     send_telemetry_loop(clients, interval)
